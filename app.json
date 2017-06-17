@@ -1,0 +1,6 @@
+{
+  "name": "Light Control App",
+  "description": "App to control lights via X10",
+  "repository": "https://github.com/jvanderpol/lights",
+  "addons": []
+}
