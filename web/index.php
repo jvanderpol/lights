@@ -27,26 +27,45 @@ function getLightClasses($light, $onButton) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script type="text/javascript">
-      function changeLight(deviceId, turnOn, onButtonId, offButtonId) {
-        action = turnOn ? "on" : "off";
-        get('action.php?action=' + action + '&deviceId=' + deviceId);
+      function changeLightDisplay(turnOn, onButtonId, offButtonId) {
+        var onButton = document.getElementById(onButtonId);
+        var offButton = document.getElementById(offButtonId);
+        var toggled = turnOn == offButton.classList.contains('action-button-offish')
         if (turnOn) {
-          document.getElementById(onButtonId).classList.add('action-button-offish');
-          document.getElementById(offButtonId).classList.remove('action-button-offish');
+          onButton.classList.add('action-button-offish');
+          offButton.classList.remove('action-button-offish');
         } else {
-          document.getElementById(onButtonId).classList.remove('action-button-offish');
-          document.getElementById(offButtonId).classList.on('action-button-offish');
+          onButton.classList.remove('action-button-offish');
+          offButton.classList.add('action-button-offish');
         }
+        return toggled;
       }
 
-      function get(url) {
+      function changeLight(deviceId, turnOn, onButtonId, offButtonId) {
+        var toggled = changeLightDisplay(turnOn, onButtonId, offButtonId);
+        action = turnOn ? "on" : "off";
+        get('action.php?action=' + action + '&device_id=' + deviceId, function() {
+          if (toggled) {
+            changeLightDisplay(!turnOn, onButtonId, offButtonId);
+          }
+        });
+      }
+
+      function get(url, failureCallback) {
           var xmlHttp = new XMLHttpRequest();
           xmlHttp.onreadystatechange = function() { 
-              if (xmlHttp.readyState == 4 && xmlHttp.status != 200)
-                  alert("Error calling " + url + " " + xmlHttp.status + " " + xmlHttp.readyState)
+            if (this.readyState == 4 && this.status != 200) {
+              var response = JSON.parse(this.responseText);
+              var snackbarContainer = document.querySelector('#error-snackbar');
+              snackbarContainer.MaterialSnackbar.showSnackbar({
+              message: 'Error running command: ' + response.command + " result: " + response.result,
+                timeout: 5000,
+              });
+              failureCallback();
+            }
           }
           xmlHttp.open("GET", url, true); // true for asynchronous 
-          xmlHttp.send(null);
+          xmlHttp.send();
       }
     </script>
     <style>
@@ -61,6 +80,11 @@ function getLightClasses($light, $onButton) {
       .action-button-offish {
         opacity: 0.5;
       }
+
+      .light-title {
+        text-align: center;
+        width: 100%;
+      }
     </style>
   </head>
   <body>
@@ -68,8 +92,8 @@ function getLightClasses($light, $onButton) {
       <?php foreach ($lights as $light) { ?>
         <div class="mdl-cell mdl-cell--4-col">
           <div class="mdl-card mdl-shadow--2dp" style="width: 100%">
-            <div class="mdl-card__title">
-              <h4><?= $light['name'] ?> <?= $light['on'] ?></h4>
+            <div class="mdl-card__title ">
+              <h2 class="light-title"><?= $light['name'] ?> <?= $light['on'] ?></h2>
             </div>
             <div class="mdl-card__actions mdl-card--border" style="padding: 0; font-size: 0;">
               <?
@@ -78,20 +102,22 @@ function getLightClasses($light, $onButton) {
               ?>
               <a class="<?=getLightClasses($light, true)?>"
                  onclick="changeLight(<?=$light['id']?>, true, '<?=$onId?>', '<?=$offId?>')"
-                 id="<?=$onId?>"
-                 href="#">
+                 id="<?=$onId?>">
                 On
               </a>
               <a class="<?=getLightClasses($light, false)?>"
                  onclick="changeLight(<?=$light['id']?>, false, '<?=$onId?>', '<?=$offId?>')"
-                 id="<?=$offId?>"
-                 href="#">
+                 id="<?=$offId?>">
                 Off
               </a>
             </div>
           </div>
         </div>
       <?php } ?>
+    </div>
+    <div id="error-snackbar" class="mdl-js-snackbar mdl-snackbar">
+      <div class="mdl-snackbar__text"></div>
+      <button class="mdl-snackbar__action" type="button"></button>
     </div>
   </body>
 </html>
